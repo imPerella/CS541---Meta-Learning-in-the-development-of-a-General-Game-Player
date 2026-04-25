@@ -44,10 +44,10 @@ class Ataxx(Game):
                                 move_type = "clone" if max(abs(dr), abs(dc)) == 1 else "jump"
                                 moves.append(((r, c), (nr, nc), move_type))
 
-        return moves if moves else [None]
+        return moves if moves else None
 
     def make_move(self, state, move):
-        if  move is [None]:
+        if move == None:
             return AtaxxState(state.board.copy(), -state.player)
         
         (r1, c1), (r2, c2), move_type = move
@@ -72,11 +72,11 @@ class Ataxx(Game):
         return AtaxxState(board, -player)
 
     def game_over(self, state):
-        if self.legal_moves(state) != [None]:
+        if self.legal_moves(state) != None:
             return False
 
         opponent_state = AtaxxState(state.board, -state.player)
-        if self.legal_moves(opponent_state) != [None]:
+        if self.legal_moves(opponent_state) != None:
             return False
 
         return True
@@ -95,8 +95,11 @@ class Ataxx(Game):
         return player_tiles / total_tiles
 
     def mobility(self, state):
-        player_moves = len(self.legal_moves(state))
-        total_squares = self.rows*self.cols
+        if self.legal_moves(state) != None:
+            player_moves = len(self.legal_moves(state))
+            total_squares = self.rows*self.cols
+        else: 
+            return 0
         
         return player_moves / total_squares
 
