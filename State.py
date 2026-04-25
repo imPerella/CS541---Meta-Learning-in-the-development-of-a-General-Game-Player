@@ -20,17 +20,14 @@ class ConnectFourState:
         self.player = player  # 1 or -1 
 
 class OthelloState:
-    def __init__(self, board=None, player=1, rows = 8, cols = 8, keep_pieces = True):
-        if board is None and keep_pieces:
+    def __init__(self, board=None, player=1, rows = 8, cols = 8):
+        if board is None:
             self.board = np.zeros((rows, cols), dtype=int)
             middle_row, middle_col = rows//2, cols//2
             self.board[middle_row-1, middle_col-1] = -1
             self.board[middle_row - 1 , middle_col] = 1
             self.board[middle_row, middle_col-1] = 1
             self.board[middle_row, middle_col] = -1
-
-        elif board is None and not keep_pieces:
-            self.board = np.zeros((rows, cols), dtype=int)
 
         else:
             self.board = board
@@ -39,16 +36,13 @@ class OthelloState:
 
 
 class AtaxxState:
-    def __init__(self, board=None, player=1, rows = 7, cols = 7, keep_pieces = True):
-        if board is None and keep_pieces:
+    def __init__(self, board=None, player=1, rows = 7, cols = 7):
+        if board is None:
             self.board = np.zeros((rows, cols), dtype=int)
             self.board[0, 0] = 1
             self.board[0, cols-1] = -1
             self.board[rows-1, 0] = -1
             self.board[rows-1, cols-1] = 1
-
-        elif board is None and not keep_pieces:
-            self.board = np.zeros((rows, cols), dtype=int)
 
         else:
             self.board = board
