@@ -55,7 +55,7 @@ class Othello(Game):
 
         for r in range(board.shape[0]):
             for c in range(board.shape[1]):
-                if self.get_flips(board, r, c, player):
+                if self.get_flips(state, r, c):
                     moves.append((r, c))
 
         return moves if moves else [None]
@@ -68,7 +68,7 @@ class Othello(Game):
         board = state.board.copy()
         player = state.player
 
-        flips = self.get_flips(board, r, c, player)
+        flips = self.get_flips(state, r, c)
 
         if not flips:
             return state  # invalid move safeguard
