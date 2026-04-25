@@ -30,8 +30,7 @@ class ConnectFour(Game):
 
     def game_over(self, state):
         return (
-            self.check_winner(state.board, 1) or
-            self.check_winner(state.board, -1) or
+            self.check_winner(state) or
             len(self.legal_moves(state)) == 0
         )
 
@@ -75,6 +74,7 @@ class ConnectFour(Game):
     def control(self, state):
         board = state.board
         total = self.cols * self.rows
+        controlled = 0
 
         for c in range(self.cols):
             controlled += np.sum(board[:, c] == state.player)
@@ -145,7 +145,7 @@ class ConnectFour(Game):
             next_state = self.make_move(state, move)
 
             # Immediate win
-            if self.check_winner(next_state.board, state.player):
+            if self.check_winner(next_state):
                 threats += 1
                 continue
 
