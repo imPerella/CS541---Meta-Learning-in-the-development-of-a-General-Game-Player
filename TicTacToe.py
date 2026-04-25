@@ -1,5 +1,4 @@
 import numpy as np
-import numpy as np
 from State import TicTacToeState
 from Game import Game
 
