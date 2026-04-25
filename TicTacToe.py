@@ -1,4 +1,5 @@
 import numpy as np
+import numpy as np
 from State import TicTacToeState
 from Game import Game
 
@@ -168,3 +169,4 @@ class TicTacToe(Game):
             if sum(line) == 3 * player:
                 return True
         return False
+
