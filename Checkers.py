@@ -1,15 +1,40 @@
 import numpy as np
-from State import CheckersState
+from State import CheckersState, UNPLAYABLE, sample_unplayable_positions
 from Game import Game
 class Checkers(Game):
 
-    def __init__(self, rows=8, cols=8, keep_pieces = True):
+    def __init__(
+        self,
+        rows=8,
+        cols=8,
+        keep_pieces = True,
+        edge_unplayable_ratio=0.0,
+        inner_unplayable_ratio=0.0,
+    ):
         self.rows = rows
         self.cols = cols
         self.keep_pieces = keep_pieces
+        self.edge_unplayable_ratio = edge_unplayable_ratio
+        self.inner_unplayable_ratio = inner_unplayable_ratio
+
+        base_state = CheckersState(rows=self.rows, cols=self.cols, keep_pieces=self.keep_pieces)
+        forbidden_positions = set(zip(*np.where(base_state.board != 0)))
+
+        self.unplayable_positions = sample_unplayable_positions(
+            rows=self.rows,
+            cols=self.cols,
+            edge_unplayable_ratio=self.edge_unplayable_ratio,
+            inner_unplayable_ratio=self.inner_unplayable_ratio,
+            forbidden_positions=forbidden_positions,
+        )
 
     def initial_state(self):
-        return CheckersState(rows=self.rows, cols=self.cols, keep_pieces= self.keep_pieces)
+        return CheckersState(
+            rows=self.rows,
+            cols=self.cols,
+            keep_pieces=self.keep_pieces,
+            unplayable_positions=self.unplayable_positions,
+        )
 
     # ----------------------
     # Helpers
@@ -144,7 +169,13 @@ class Checkers(Game):
 
         # Weighted: kings more valuable
         player_score = np.sum((board == player) * 1) + np.sum((board == 2*player) * 2)
-        total_squares = (self.rows * self.cols) / 2 #checkers only uses dark sqaures
+        rows, cols = board.shape
+        rr, cc = np.indices((rows, cols))
+        dark_squares = (rr + cc) % 2 == 0
+        total_squares = np.sum(dark_squares & (board != UNPLAYABLE))
+
+        if total_squares == 0:
+            return 0
 
         return player_score / total_squares
 
@@ -152,7 +183,13 @@ class Checkers(Game):
         player_moves = len(self.legal_moves(state))
         opponent_moves = len(self.legal_moves(CheckersState(state.board, -state.player)))
 
-        total_squares = self.rows * self.cols /2 #only uses dark squares
+        rows, cols = state.board.shape
+        rr, cc = np.indices((rows, cols))
+        dark_squares = (rr + cc) % 2 == 0
+        total_squares = np.sum(dark_squares & (state.board != UNPLAYABLE))
+
+        if total_squares == 0:
+            return 0
 
         return player_moves / total_squares
 
@@ -220,6 +257,9 @@ class Checkers(Game):
             return 0
 
         # Tension = proportion of capture moves
-        capture_moves = sum(1 for m in legal if len(m) > 2)
+        capture_moves = 0
+        for m in legal:
+            if any(abs(m[i+1][0] - m[i][0]) == 2 for i in range(len(m) - 1)):
+                capture_moves += 1
 
         return capture_moves / len(legal)

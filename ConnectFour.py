@@ -1,15 +1,38 @@
 import numpy as np
 from Game import Game
-from State import ConnectFourState
+from State import ConnectFourState, UNPLAYABLE, sample_unplayable_positions
 
 class ConnectFour(Game):
 
-    def __init__(self, rows=6, cols=7):
+    def __init__(
+        self,
+        rows=6,
+        cols=7,
+        edge_unplayable_ratio=0.0,
+        inner_unplayable_ratio=0.0,
+        in_a_row=4,
+    ):
         self.rows = rows
         self.cols = cols
+        max_in_a_row = min(self.rows, self.cols)
+        self.in_a_row = int(in_a_row)
+        if self.in_a_row < 3 or self.in_a_row > max_in_a_row:
+            raise ValueError("in_a_row must be between 3 and min(rows, cols)")
+        self.edge_unplayable_ratio = edge_unplayable_ratio
+        self.inner_unplayable_ratio = inner_unplayable_ratio
+        self.unplayable_positions = sample_unplayable_positions(
+            rows=self.rows,
+            cols=self.cols,
+            edge_unplayable_ratio=self.edge_unplayable_ratio,
+            inner_unplayable_ratio=self.inner_unplayable_ratio,
+        )
 
     def initial_state(self):
-        return ConnectFourState(rows=self.rows, cols=self.cols)
+        return ConnectFourState(
+            rows=self.rows,
+            cols=self.cols,
+            unplayable_positions=self.unplayable_positions,
+        )
 
     def legal_moves(self, state):
         # A move is a column where the top cell is empty
@@ -38,32 +61,27 @@ class ConnectFour(Game):
     # Win Detection
     # ----------------------
 
-    def check_winner(self, state):
+    def check_winner(self, state, player=None):
         rows, cols = state.board.shape
+        k = self.in_a_row
 
-        # Horizontal
-        for r in range(rows):
-            for c in range(cols - 3):
-                if all(state.board[r, c+i] == state.player for i in range(4)):
-                    return True
+        players = [player] if player in (-1, 1) else [1, -1]
+        directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
 
-        # Vertical
-        for r in range(rows - 3):
-            for c in range(cols):
-                if all(state.board[r+i, c] == state.player for i in range(4)):
-                    return True
+        for p in players:
+            for r in range(rows):
+                for c in range(cols):
+                    if state.board[r, c] != p:
+                        continue
 
-        # Diagonal /
-        for r in range(rows - 3):
-            for c in range(cols - 3):
-                if all(state.board[r+i, c+i] == state.player for i in range(4)):
-                    return True
+                    for dr, dc in directions:
+                        end_r = r + (k - 1) * dr
+                        end_c = c + (k - 1) * dc
+                        if not (0 <= end_r < rows and 0 <= end_c < cols):
+                            continue
 
-        # Diagonal \
-        for r in range(3, rows):
-            for c in range(cols - 3):
-                if all(state.board[r-i, c+i] == state.player for i in range(4)):
-                    return True
+                        if all(state.board[r + i * dr, c + i * dc] == p for i in range(k)):
+                            return True
 
         return False
 
@@ -73,7 +91,9 @@ class ConnectFour(Game):
 
     def control(self, state):
         board = state.board
-        total = self.cols * self.rows
+        total = np.sum(board != UNPLAYABLE)
+        if total == 0:
+            return 0
         controlled = 0
 
         for c in range(self.cols):
@@ -82,7 +102,10 @@ class ConnectFour(Game):
         return controlled / total
 
     def mobility(self, state):
-        return len(self.legal_moves(state)) / self.cols*self.rows
+        total_playable = np.sum(state.board != UNPLAYABLE)
+        if total_playable == 0:
+            return 0
+        return len(self.legal_moves(state)) / total_playable
 
     def stability(self, state):
         # Stable = pieces that cannot be captured/moved
@@ -105,6 +128,7 @@ class ConnectFour(Game):
         def dfs(r, c):
             stack = [(r, c)]
             size = 0
+            rows, cols = board.shape
 
             while stack:
                 x, y = stack.pop()
@@ -115,7 +139,7 @@ class ConnectFour(Game):
 
                 for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
                     nx, ny = x+dx, y+dy
-                    if (0 <= nx < 6 and 0 <= ny < 7 and
+                    if (0 <= nx < rows and 0 <= ny < cols and
                         board[nx, ny] == player and
                         (nx, ny) not in visited):
                         stack.append((nx, ny))
@@ -145,7 +169,7 @@ class ConnectFour(Game):
             next_state = self.make_move(state, move)
 
             # Immediate win
-            if self.check_winner(next_state):
+            if self.check_winner(next_state, state.player):
                 threats += 1
                 continue
 
@@ -161,32 +185,36 @@ class ConnectFour(Game):
 
     def creates_threat(self, board, player):
         rows, cols = board.shape
+        k = self.in_a_row
+
+        if k < 2:
+            return False
 
         def count_window(window):
             return (
-                np.count_nonzero(window == player) == 3 and
+                np.count_nonzero(window == player) == (k - 1) and
                 np.count_nonzero(window == 0) == 1
             )
 
-        # Check all 4-length windows
+        # Check all k-length windows
         for r in range(rows):
-            for c in range(cols - 3):
-                if count_window(board[r, c:c+4]):
+            for c in range(cols - k + 1):
+                if count_window(board[r, c:c+k]):
                     return True
 
-        for r in range(rows - 3):
+        for r in range(rows - k + 1):
             for c in range(cols):
-                if count_window(board[r:r+4, c]):
+                if count_window(board[r:r+k, c]):
                     return True
 
-        for r in range(rows - 3):
-            for c in range(cols - 3):
-                if count_window([board[r+i, c+i] for i in range(4)]):
+        for r in range(rows - k + 1):
+            for c in range(cols - k + 1):
+                if count_window([board[r+i, c+i] for i in range(k)]):
                     return True
 
-        for r in range(3, rows):
-            for c in range(cols - 3):
-                if count_window([board[r-i, c+i] for i in range(4)]):
+        for r in range(k - 1, rows):
+            for c in range(cols - k + 1):
+                if count_window([board[r-i, c+i] for i in range(k)]):
                     return True
 
         return False

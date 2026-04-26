@@ -1,5 +1,5 @@
 import numpy as np
-from State import OthelloState
+from State import OthelloState, UNPLAYABLE, sample_unplayable_positions
 from Game import Game
 
 class Othello(Game):
@@ -10,13 +10,41 @@ class Othello(Game):
         (1, -1),  (1, 0), (1, 1)
     ]
 
-    def __init__(self, rows=8, cols=8, keep_pieces = True):
+    def __init__(
+        self,
+        rows=8,
+        cols=8,
+        keep_pieces=True,
+        edge_unplayable_ratio=0.0,
+        inner_unplayable_ratio=0.0,
+    ):
         self.rows = rows
         self.cols = cols
         self.keep_pieces = keep_pieces
+        self.edge_unplayable_ratio = edge_unplayable_ratio
+        self.inner_unplayable_ratio = inner_unplayable_ratio
+
+        middle_row, middle_col = self.rows // 2, self.cols // 2
+        forbidden_positions = {
+            (middle_row - 1, middle_col - 1),
+            (middle_row - 1, middle_col),
+            (middle_row, middle_col - 1),
+            (middle_row, middle_col),
+        }
+        self.unplayable_positions = sample_unplayable_positions(
+            rows=self.rows,
+            cols=self.cols,
+            edge_unplayable_ratio=self.edge_unplayable_ratio,
+            inner_unplayable_ratio=self.inner_unplayable_ratio,
+            forbidden_positions=forbidden_positions,
+        )
 
     def initial_state(self):
-        return OthelloState(rows=self.rows, cols=self.cols, keep_pieces=self.keep_pieces)
+        return OthelloState(
+            rows=self.rows,
+            cols=self.cols,
+            unplayable_positions=self.unplayable_positions,
+        )
 
     # ----------------------
     # Move Logic
@@ -99,13 +127,20 @@ class Othello(Game):
         player = state.player
 
         player_tiles = np.sum(board == player)
-        total_tiles = self.cols*self.rows
+        total_tiles = np.sum(board != UNPLAYABLE)
+
+        if total_tiles == 0:
+            return 0
 
         return player_tiles / total_tiles
 
     def mobility(self, state):
-        player_moves = len(self.legal_moves(state))
-        total_squares = self.cols *self.rows
+        legal = [m for m in self.legal_moves(state) if m is not None]
+        player_moves = len(legal)
+        total_squares = np.sum(state.board != UNPLAYABLE)
+
+        if total_squares == 0:
+            return 0
 
         return player_moves / total_squares
 
@@ -139,6 +174,7 @@ class Othello(Game):
     def connectivity(self, state):
         board = state.board
         player = state.player
+        rows, cols = board.shape
         visited = set()
 
         def dfs(r, c):
@@ -154,7 +190,7 @@ class Othello(Game):
 
                 for dx, dy in self.DIRECTIONS:
                     nx, ny = x + dx, y + dy
-                    if (0 <= nx < 8 and 0 <= ny < 8 and
+                    if (0 <= nx < rows and 0 <= ny < cols and
                         board[nx, ny] == player and
                         (nx, ny) not in visited):
                         stack.append((nx, ny))
@@ -175,22 +211,23 @@ class Othello(Game):
 
     def tension(self, state):
         player = state.player
-        legal = self.legal_moves(state)
+        legal = [m for m in self.legal_moves(state) if m is not None]
 
         if not legal:
             return 0
 
-        opponent = OthelloState(state.board, -player)
-        opponent_moves = set(self.legal_moves(opponent))
+        opponent_state = OthelloState(state.board, -player)
+        opponent_moves = [m for m in self.legal_moves(opponent_state) if m is not None]
 
         # Moves that reduce opponent mobility
         impactful = 0
 
         for move in legal:
             next_state = self.make_move(state, move)
-            next_opponent_moves = len(self.legal_moves(
-                OthelloState(next_state.board, -player)
-            ))
+            next_opponent = OthelloState(next_state.board, -player)
+            next_opponent_moves = len(
+                [m for m in self.legal_moves(next_opponent) if m is not None]
+            )
 
             if next_opponent_moves < len(opponent_moves):
                 impactful += 1

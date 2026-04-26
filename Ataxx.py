@@ -1,18 +1,44 @@
 import numpy as np
 from Game import Game
-from State import AtaxxState
+from State import AtaxxState, UNPLAYABLE, sample_unplayable_positions
 class Ataxx(Game):
 
     DIRECTIONS = [(dr, dc) for dr in range(-2, 3) for dc in range(-2, 3)
                   if not (dr == 0 and dc == 0)]
 
-    def __init__(self, rows=7, cols=7, keep_pieces = True):
+    def __init__(
+        self,
+        rows=7,
+        cols=7,
+        keep_pieces=True,
+        edge_unplayable_ratio=0.0,
+        inner_unplayable_ratio=0.0,
+    ):
         self.rows = rows
         self.cols = cols
         self.keep_pieces = keep_pieces
+        self.edge_unplayable_ratio = edge_unplayable_ratio
+        self.inner_unplayable_ratio = inner_unplayable_ratio
+        forbidden_positions = {
+            (0, 0),
+            (0, self.cols - 1),
+            (self.rows - 1, 0),
+            (self.rows - 1, self.cols - 1),
+        }
+        self.unplayable_positions = sample_unplayable_positions(
+            rows=self.rows,
+            cols=self.cols,
+            edge_unplayable_ratio=self.edge_unplayable_ratio,
+            inner_unplayable_ratio=self.inner_unplayable_ratio,
+            forbidden_positions=forbidden_positions,
+        )
 
     def initial_state(self):
-        return AtaxxState(rows=self.rows, cols=self.cols, keep_pieces=self.keep_pieces)
+        return AtaxxState(
+            rows=self.rows,
+            cols=self.cols,
+            unplayable_positions=self.unplayable_positions,
+        )
 
     # ----------------------
     # Move Logic
@@ -90,14 +116,19 @@ class Ataxx(Game):
         player = state.player
 
         player_tiles = np.sum(board == player)
-        total_tiles = self.rows * self.cols
+        total_tiles = np.sum(board != UNPLAYABLE)
+
+        if total_tiles == 0:
+            return 0
 
         return player_tiles / total_tiles
 
     def mobility(self, state):
         if self.legal_moves(state) != None:
             player_moves = len(self.legal_moves(state))
-            total_squares = self.rows*self.cols
+            total_squares = np.sum(state.board != UNPLAYABLE)
+            if total_squares == 0:
+                return 0
         else: 
             return 0
         
