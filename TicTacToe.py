@@ -1,5 +1,5 @@
 import numpy as np
-from State import TicTacToeState, UNPLAYABLE, sample_unplayable_positions
+from State import TicTacToeState, UNPLAYABLE, clone_piece_queues, sample_unplayable_positions
 from Game import Game
 
 class TicTacToe(Game):
@@ -11,6 +11,8 @@ class TicTacToe(Game):
         edge_unplayable_ratio=0.0,
         inner_unplayable_ratio=0.0,
         in_a_row=None,
+        max_pieces_per_player=None,
+        num_turns=1,
     ):
         self.rows = rows
         self.cols = cols
@@ -23,6 +25,10 @@ class TicTacToe(Game):
                 raise ValueError("in_a_row must be between 3 and min(rows, cols)")
         self.edge_unplayable_ratio = edge_unplayable_ratio
         self.inner_unplayable_ratio = inner_unplayable_ratio
+        self.num_turns = self._validate_num_turns(num_turns)
+        if max_pieces_per_player is not None and int(max_pieces_per_player) < 1:
+            raise ValueError("max_pieces_per_player must be >= 1 when provided")
+        self.max_pieces_per_player = None if max_pieces_per_player is None else int(max_pieces_per_player)
         self.unplayable_positions = sample_unplayable_positions(
             rows=self.rows,
             cols=self.cols,
@@ -30,11 +36,21 @@ class TicTacToe(Game):
             inner_unplayable_ratio=self.inner_unplayable_ratio,
         )
 
+    def _enforce_piece_limit(self, board, queues, player):
+        if self.max_pieces_per_player is None:
+            return
+
+        while len(queues[player]) > self.max_pieces_per_player:
+            old_r, old_c = queues[player].pop(0)
+            if board[old_r, old_c] == player:
+                board[old_r, old_c] = 0
+
     def initial_state(self):
         return TicTacToeState(
             rows=self.rows,
             cols=self.cols,
             unplayable_positions=self.unplayable_positions,
+            num_turns=self.num_turns,
         )
 
     def legal_moves(self, state):
@@ -51,10 +67,17 @@ class TicTacToe(Game):
             raise ValueError("Illegal move")
         new_board = state.board.copy()
         new_board[r, c] = state.player
+        new_queues = clone_piece_queues(state.piece_queues)
+        new_queues[state.player].append((r, c))
+        self._enforce_piece_limit(new_board, new_queues, state.player)
+        next_player, next_turns_remaining = self._next_turn(state.player, state.turns_remaining)
 
         return TicTacToeState(
             board=new_board,
-            player=-state.player
+            player=next_player,
+            piece_queues=new_queues,
+            num_turns=self.num_turns,
+            turns_remaining=next_turns_remaining,
         )
 
     def check_winner(self, state):

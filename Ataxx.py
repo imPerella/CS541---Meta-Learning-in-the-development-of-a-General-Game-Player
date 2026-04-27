@@ -1,6 +1,6 @@
 import numpy as np
 from Game import Game
-from State import AtaxxState, UNPLAYABLE, sample_unplayable_positions
+from State import AtaxxState, UNPLAYABLE, clone_piece_queues, sample_unplayable_positions
 class Ataxx(Game):
 
     DIRECTIONS = [(dr, dc) for dr in range(-2, 3) for dc in range(-2, 3)
@@ -13,12 +13,18 @@ class Ataxx(Game):
         keep_pieces=True,
         edge_unplayable_ratio=0.0,
         inner_unplayable_ratio=0.0,
+        max_pieces_per_player=None,
+        num_turns=1,
     ):
         self.rows = rows
         self.cols = cols
         self.keep_pieces = keep_pieces
         self.edge_unplayable_ratio = edge_unplayable_ratio
         self.inner_unplayable_ratio = inner_unplayable_ratio
+        self.num_turns = self._validate_num_turns(num_turns)
+        if max_pieces_per_player is not None and int(max_pieces_per_player) < 1:
+            raise ValueError("max_pieces_per_player must be >= 1 when provided")
+        self.max_pieces_per_player = None if max_pieces_per_player is None else int(max_pieces_per_player)
         forbidden_positions = {
             (0, 0),
             (0, self.cols - 1),
@@ -33,11 +39,34 @@ class Ataxx(Game):
             forbidden_positions=forbidden_positions,
         )
 
+    def _remove_from_queue(self, queue, position):
+        for idx, queued_position in enumerate(queue):
+            if queued_position == position:
+                queue.pop(idx)
+                return
+
+    def _move_position_in_queue(self, queue, from_position, to_position):
+        for idx, queued_position in enumerate(queue):
+            if queued_position == from_position:
+                queue[idx] = to_position
+                return
+        queue.append(to_position)
+
+    def _enforce_piece_limit(self, board, queues, player):
+        if self.max_pieces_per_player is None:
+            return
+
+        while len(queues[player]) > self.max_pieces_per_player:
+            old_r, old_c = queues[player].pop(0)
+            if board[old_r, old_c] == player:
+                board[old_r, old_c] = 0
+
     def initial_state(self):
         return AtaxxState(
             rows=self.rows,
             cols=self.cols,
             unplayable_positions=self.unplayable_positions,
+            num_turns=self.num_turns,
         )
 
     # ----------------------
@@ -74,17 +103,28 @@ class Ataxx(Game):
 
     def make_move(self, state, move):
         if move == None:
-            return AtaxxState(state.board.copy(), -state.player)
+            next_player, next_turns_remaining = self._next_turn(state.player, state.turns_remaining)
+            return AtaxxState(
+                state.board.copy(),
+                next_player,
+                piece_queues=clone_piece_queues(state.piece_queues),
+                num_turns=self.num_turns,
+                turns_remaining=next_turns_remaining,
+            )
         
         (r1, c1), (r2, c2), move_type = move
         board = state.board.copy()
         player = state.player
+        opponent = -player
+        queues = clone_piece_queues(state.piece_queues)
 
         if move_type == "clone":
             board[r2, c2] = player
+            queues[player].append((r2, c2))
         else:  # jump
             board[r1, c1] = 0
             board[r2, c2] = player
+            self._move_position_in_queue(queues[player], (r1, c1), (r2, c2))
 
         # Flip adjacent opponent pieces
         for dr in range(-1, 2):
@@ -92,16 +132,32 @@ class Ataxx(Game):
                 nr, nc = r2 + dr, c2 + dc
                 if (0 <= nr < board.shape[0] and
                     0 <= nc < board.shape[1] and
-                    board[nr, nc] == -player):
+                    board[nr, nc] == opponent):
                     board[nr, nc] = player
+                    self._remove_from_queue(queues[opponent], (nr, nc))
+                    queues[player].append((nr, nc))
 
-        return AtaxxState(board, -player)
+        self._enforce_piece_limit(board, queues, player)
+        next_player, next_turns_remaining = self._next_turn(player, state.turns_remaining)
+
+        return AtaxxState(
+            board,
+            next_player,
+            piece_queues=queues,
+            num_turns=self.num_turns,
+            turns_remaining=next_turns_remaining,
+        )
 
     def game_over(self, state):
         if self.legal_moves(state) != None:
             return False
 
-        opponent_state = AtaxxState(state.board, -state.player)
+        opponent_state = AtaxxState(
+            state.board,
+            -state.player,
+            piece_queues=clone_piece_queues(state.piece_queues),
+            num_turns=self.num_turns,
+        )
         if self.legal_moves(opponent_state) != None:
             return False
 

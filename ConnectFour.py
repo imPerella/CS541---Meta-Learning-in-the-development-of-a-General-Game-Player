@@ -1,6 +1,6 @@
 import numpy as np
 from Game import Game
-from State import ConnectFourState, UNPLAYABLE, sample_unplayable_positions
+from State import ConnectFourState, UNPLAYABLE, clone_piece_queues, sample_unplayable_positions
 
 class ConnectFour(Game):
 
@@ -11,6 +11,8 @@ class ConnectFour(Game):
         edge_unplayable_ratio=0.0,
         inner_unplayable_ratio=0.0,
         in_a_row=4,
+        max_pieces_per_player=None,
+        num_turns=1,
     ):
         self.rows = rows
         self.cols = cols
@@ -18,6 +20,10 @@ class ConnectFour(Game):
         self.in_a_row = int(in_a_row)
         if self.in_a_row < 3 or self.in_a_row > max_in_a_row:
             raise ValueError("in_a_row must be between 3 and min(rows, cols)")
+        self.num_turns = self._validate_num_turns(num_turns)
+        if max_pieces_per_player is not None and int(max_pieces_per_player) < 1:
+            raise ValueError("max_pieces_per_player must be >= 1 when provided")
+        self.max_pieces_per_player = None if max_pieces_per_player is None else int(max_pieces_per_player)
         self.edge_unplayable_ratio = edge_unplayable_ratio
         self.inner_unplayable_ratio = inner_unplayable_ratio
         self.unplayable_positions = sample_unplayable_positions(
@@ -27,11 +33,21 @@ class ConnectFour(Game):
             inner_unplayable_ratio=self.inner_unplayable_ratio,
         )
 
+    def _enforce_piece_limit(self, board, queues, player):
+        if self.max_pieces_per_player is None:
+            return
+
+        while len(queues[player]) > self.max_pieces_per_player:
+            old_r, old_c = queues[player].pop(0)
+            if board[old_r, old_c] == player:
+                board[old_r, old_c] = 0
+
     def initial_state(self):
         return ConnectFourState(
             rows=self.rows,
             cols=self.cols,
             unplayable_positions=self.unplayable_positions,
+            num_turns=self.num_turns,
         )
 
     def legal_moves(self, state):
@@ -42,14 +58,30 @@ class ConnectFour(Game):
     def make_move(self, state, move):
         col = move
         board = state.board.copy()
+        queues = clone_piece_queues(state.piece_queues)
+        drop_row = None
 
         # Drop piece to lowest empty row in that column
         for row in reversed(range(self.rows)):
             if board[row, col] == 0:
                 board[row, col] = state.player
+                drop_row = row
                 break
 
-        return ConnectFourState(board, -state.player)
+        if drop_row is None:
+            raise ValueError("Illegal move")
+
+        queues[state.player].append((drop_row, col))
+        self._enforce_piece_limit(board, queues, state.player)
+        next_player, next_turns_remaining = self._next_turn(state.player, state.turns_remaining)
+
+        return ConnectFourState(
+            board,
+            next_player,
+            piece_queues=queues,
+            num_turns=self.num_turns,
+            turns_remaining=next_turns_remaining,
+        )
 
     def game_over(self, state):
         return (

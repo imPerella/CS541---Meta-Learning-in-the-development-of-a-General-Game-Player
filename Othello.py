@@ -1,5 +1,5 @@
 import numpy as np
-from State import OthelloState, UNPLAYABLE, sample_unplayable_positions
+from State import OthelloState, UNPLAYABLE, clone_piece_queues, sample_unplayable_positions
 from Game import Game
 
 class Othello(Game):
@@ -17,12 +17,18 @@ class Othello(Game):
         keep_pieces=True,
         edge_unplayable_ratio=0.0,
         inner_unplayable_ratio=0.0,
+        max_pieces_per_player=None,
+        num_turns=1,
     ):
         self.rows = rows
         self.cols = cols
         self.keep_pieces = keep_pieces
         self.edge_unplayable_ratio = edge_unplayable_ratio
         self.inner_unplayable_ratio = inner_unplayable_ratio
+        self.num_turns = self._validate_num_turns(num_turns)
+        if max_pieces_per_player is not None and int(max_pieces_per_player) < 1:
+            raise ValueError("max_pieces_per_player must be >= 1 when provided")
+        self.max_pieces_per_player = None if max_pieces_per_player is None else int(max_pieces_per_player)
 
         middle_row, middle_col = self.rows // 2, self.cols // 2
         forbidden_positions = {
@@ -39,11 +45,27 @@ class Othello(Game):
             forbidden_positions=forbidden_positions,
         )
 
+    def _remove_from_queue(self, queue, position):
+        for idx, queued_position in enumerate(queue):
+            if queued_position == position:
+                queue.pop(idx)
+                return
+
+    def _enforce_piece_limit(self, board, queues, player):
+        if self.max_pieces_per_player is None:
+            return
+
+        while len(queues[player]) > self.max_pieces_per_player:
+            old_r, old_c = queues[player].pop(0)
+            if board[old_r, old_c] == player:
+                board[old_r, old_c] = 0
+
     def initial_state(self):
         return OthelloState(
             rows=self.rows,
             cols=self.cols,
             unplayable_positions=self.unplayable_positions,
+            num_turns=self.num_turns,
         )
 
     # ----------------------
@@ -90,11 +112,20 @@ class Othello(Game):
 
     def make_move(self, state, move):
         if move is None:
-            return OthelloState(state.board.copy(), -state.player)
+            next_player, next_turns_remaining = self._next_turn(state.player, state.turns_remaining)
+            return OthelloState(
+                state.board.copy(),
+                next_player,
+                piece_queues=clone_piece_queues(state.piece_queues),
+                num_turns=self.num_turns,
+                turns_remaining=next_turns_remaining,
+            )
         
         r, c = move
         board = state.board.copy()
         player = state.player
+        opponent = -player
+        queues = clone_piece_queues(state.piece_queues)
 
         flips = self.get_flips(state, r, c)
 
@@ -102,18 +133,35 @@ class Othello(Game):
             return state  # invalid move safeguard
 
         board[r, c] = player
+        queues[player].append((r, c))
         for fr, fc in flips:
             board[fr, fc] = player
+            self._remove_from_queue(queues[opponent], (fr, fc))
+            queues[player].append((fr, fc))
 
-        return OthelloState(board, -player)
+        self._enforce_piece_limit(board, queues, player)
+        next_player, next_turns_remaining = self._next_turn(player, state.turns_remaining)
+
+        return OthelloState(
+            board,
+            next_player,
+            piece_queues=queues,
+            num_turns=self.num_turns,
+            turns_remaining=next_turns_remaining,
+        )
 
     def game_over(self, state):
         # Game ends when neither player has moves
         if self.legal_moves(state) != [None]:
             return False
 
-        other = OthelloState(state.board, -state.player)
-        if self.legal_moves(other) != [None]:
+        opponent = OthelloState(
+            state.board,
+            -state.player,
+            piece_queues=clone_piece_queues(state.piece_queues),
+            num_turns=self.num_turns,
+        )
+        if self.legal_moves(opponent) != [None]:
             return False
 
         return True
@@ -216,7 +264,7 @@ class Othello(Game):
         if not legal:
             return 0
 
-        opponent_state = OthelloState(state.board, -player)
+        opponent_state = OthelloState(state.board, -player, num_turns=self.num_turns)
         opponent_moves = [m for m in self.legal_moves(opponent_state) if m is not None]
 
         # Moves that reduce opponent mobility
@@ -224,7 +272,7 @@ class Othello(Game):
 
         for move in legal:
             next_state = self.make_move(state, move)
-            next_opponent = OthelloState(next_state.board, -player)
+            next_opponent = OthelloState(next_state.board, -player, num_turns=self.num_turns)
             next_opponent_moves = len(
                 [m for m in self.legal_moves(next_opponent) if m is not None]
             )

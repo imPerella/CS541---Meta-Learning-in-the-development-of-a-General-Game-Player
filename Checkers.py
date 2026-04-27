@@ -10,14 +10,25 @@ class Checkers(Game):
         keep_pieces = True,
         edge_unplayable_ratio=0.0,
         inner_unplayable_ratio=0.0,
+        max_pieces_per_player=None,
+        num_turns=1,
     ):
         self.rows = rows
         self.cols = cols
         self.keep_pieces = keep_pieces
         self.edge_unplayable_ratio = edge_unplayable_ratio
         self.inner_unplayable_ratio = inner_unplayable_ratio
+        self.num_turns = self._validate_num_turns(num_turns)
+        if max_pieces_per_player is not None and int(max_pieces_per_player) < 1:
+            raise ValueError("max_pieces_per_player must be >= 1 when provided")
+        self.max_pieces_per_player = None if max_pieces_per_player is None else int(max_pieces_per_player)
 
-        base_state = CheckersState(rows=self.rows, cols=self.cols, keep_pieces=self.keep_pieces)
+        base_state = CheckersState(
+            rows=self.rows,
+            cols=self.cols,
+            keep_pieces=self.keep_pieces,
+            max_pieces_per_player=self.max_pieces_per_player,
+        )
         forbidden_positions = set(zip(*np.where(base_state.board != 0)))
 
         self.unplayable_positions = sample_unplayable_positions(
@@ -34,6 +45,8 @@ class Checkers(Game):
             cols=self.cols,
             keep_pieces=self.keep_pieces,
             unplayable_positions=self.unplayable_positions,
+            max_pieces_per_player=self.max_pieces_per_player,
+            num_turns=self.num_turns,
         )
 
     # ----------------------
@@ -152,7 +165,15 @@ class Checkers(Game):
             if board[0, c] == -1:
                 board[0, c] = -2
 
-        return CheckersState(board, -player)
+        next_player, next_turns_remaining = self._next_turn(player, state.turns_remaining)
+
+        return CheckersState(
+            board,
+            next_player,
+            max_pieces_per_player=self.max_pieces_per_player,
+            num_turns=self.num_turns,
+            turns_remaining=next_turns_remaining,
+        )
 
     def game_over(self, state):
         if len(self.legal_moves(state)) == 0:
@@ -181,7 +202,16 @@ class Checkers(Game):
 
     def mobility(self, state):
         player_moves = len(self.legal_moves(state))
-        opponent_moves = len(self.legal_moves(CheckersState(state.board, -state.player)))
+        opponent_moves = len(
+            self.legal_moves(
+                CheckersState(
+                    state.board,
+                    -state.player,
+                    max_pieces_per_player=self.max_pieces_per_player,
+                    num_turns=self.num_turns,
+                )
+            )
+        )
 
         rows, cols = state.board.shape
         rr, cc = np.indices((rows, cols))
