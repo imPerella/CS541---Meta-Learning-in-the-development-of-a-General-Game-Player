@@ -57,7 +57,7 @@ def calculate_label(evals):
     return list(zip(means.tolist(), stand_devs.tolist()))
 
 
-def calculate_label_online(game, n_samples=1000, max_steps_per_game=2000):
+def calculate_label_online(game, n_samples=250, max_steps_per_game=200):
     choice = random.choice
     control = game.control
     mobility = game.mobility
@@ -196,7 +196,8 @@ def generate_tic_tac_toe(
     for piece_limit, rows, cols, edge_ratio, inner_ratio, num_turns in _iter_variant_combinations(
         piece_limits, board_sizes, unplayable_proportions, num_turn_values, num_variants
     ):
-        max_in_a_row = min(rows, cols, piece_limit)
+        pl = 9999999 if piece_limit is None else piece_limit
+        max_in_a_row = min(rows, cols, pl)
         sampled_in_a_row = random.randint(3, max_in_a_row)
         in_a_row = max_in_a_row if random.random() < 0.5 else sampled_in_a_row
 
@@ -247,7 +248,8 @@ def generate_connect_four(
     for piece_limit, rows, cols, edge_ratio, inner_ratio, num_turns in _iter_variant_combinations(
         piece_limits, board_sizes, unplayable_proportions, num_turn_values, num_variants
     ):
-        max_in_a_row = min(rows, cols, piece_limit)
+        pl = 9999999 if piece_limit is None else piece_limit
+        max_in_a_row = min(rows, cols, pl)
         sampled_in_a_row = random.randint(3, max_in_a_row)
         in_a_row = 4 if random.random() < 0.5 else sampled_in_a_row
 
@@ -325,6 +327,7 @@ def generate_ataxx(
     n_samples=250,
     max_steps_per_game=200,
 ):
+    print("Generating Ataxx variants...") # DEBUGGING
     if piece_limits is None:
         piece_limits = [None, 6, 10]
     if board_sizes is None:
@@ -332,7 +335,7 @@ def generate_ataxx(
     if unplayable_proportions is None:
         unplayable_proportions = [(0.0, 0.0), (0.1, 0.1), (0.2, 0.15)]
     if num_turn_values is None:
-        num_turn_values = [1, 2, -2]
+        num_turn_values = [3, -3]
 
     X = []
     Y = []
@@ -381,7 +384,7 @@ def generate_checkers(
     if unplayable_proportions is None:
         unplayable_proportions = [(0.0, 0.0), (0.08, 0.08), (0.15, 0.12)]
     if num_turn_values is None:
-        num_turn_values = [1, 2, -2]
+        num_turn_values = [3, -3]
 
     X = []
     Y = []

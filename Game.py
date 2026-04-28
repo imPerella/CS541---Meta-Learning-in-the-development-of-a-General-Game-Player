@@ -31,6 +31,9 @@ class Game:
     
     def game_over(self, state):
         raise NotImplementedError
+
+    def allows_pass(self):
+        return False
     
     #heuristic calculation
     def control(self, state):

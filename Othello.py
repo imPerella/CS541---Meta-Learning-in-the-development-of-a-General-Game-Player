@@ -68,6 +68,9 @@ class Othello(Game):
             num_turns=self.num_turns,
         )
 
+    def allows_pass(self):
+        return True
+
     # ----------------------
     # Move Logic
     # ----------------------

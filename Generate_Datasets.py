@@ -30,7 +30,7 @@ def dataset(variant_values=[3, 3, 3, 3, 3], n_eval_samples=250, output_dir="gene
    var1, var2, var3, var4, var5 = variant_values
 
    X1, Y1 = generate_tic_tac_toe(num_variants=var1, n_samples=n_eval_samples)
-   _save_group_dataset(output_dir, "tic_tac_toee", X1, Y1)
+   _save_group_dataset(output_dir, "tic_tac_toe", X1, Y1)
    X2, Y2 = generate_connect_four(num_variants=var2, n_samples=n_eval_samples)
    _save_group_dataset(output_dir, "connect_four", X2, Y2)
    X3, Y3 = generate_othello(num_variants=var3, n_samples=n_eval_samples)
@@ -38,12 +38,12 @@ def dataset(variant_values=[3, 3, 3, 3, 3], n_eval_samples=250, output_dir="gene
    X4, Y4 = generate_ataxx(num_variants=var4, n_samples=n_eval_samples)
    _save_group_dataset(output_dir, "ataxx", X4, Y4)
    X5, Y5 = generate_checkers(num_variants=var5, keep_pieces=True, n_samples=n_eval_samples)
-   _save_group_dataset(output_dir, "checkers_with_pieces", X5, Y5)
+   _save_group_dataset(output_dir, "checkers", X5, Y5)
    # X6, Y6 = generate_checkers(num_variants=var6, keep_pieces=False, n_samples=n_eval_samples)
    # _save_group_dataset(output_dir, "checkers_without_pieces", X6, Y6)
 
-   X = X1 + X2 + X3 + X4 + X5
-   Y = Y1 + Y2 + Y3 + Y4 + Y5
+   X = X4 + X5
+   Y = Y4 + Y5
 
    return X, Y
 

@@ -1,4 +1,6 @@
 proposal.tex
 .venv/
+trained_models/
+generated_datasets/
 __pycache__/
 *.pyc
