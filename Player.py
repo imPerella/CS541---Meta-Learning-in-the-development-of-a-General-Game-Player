@@ -26,7 +26,7 @@ def evaluate_state(game, state, root_player, weights):
 
 
 # Minimax + Alpha Beta Pruning because complex games will take forever with minimax;
-def alphabeta(game, state, depth, alpha, beta, weights, root_player, start_time, time_limit = 1.0):
+def alphabeta(game, state, depth, alpha, beta, weights, root_player, start_time, time_limit = 25.0):
     if time.time() - start_time > time_limit:
         raise TimeoutError
     #bool

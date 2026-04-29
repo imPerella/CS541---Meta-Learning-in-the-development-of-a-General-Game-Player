@@ -42,8 +42,8 @@ def dataset(variant_values=[3, 3, 3, 3, 3], n_eval_samples=250, output_dir="gene
    # X6, Y6 = generate_checkers(num_variants=var6, keep_pieces=False, n_samples=n_eval_samples)
    # _save_group_dataset(output_dir, "checkers_without_pieces", X6, Y6)
 
-   X = X4 + X5
-   Y = Y4 + Y5
+   X = X1 + X2 + X3 + X4 + X5
+   Y = Y1 + Y2 + Y3 + Y4 + Y5
 
    return X, Y
 

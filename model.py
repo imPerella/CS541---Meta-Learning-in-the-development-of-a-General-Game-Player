@@ -17,7 +17,8 @@ DATASET_INFO = [
 	("checkers", "checkers.npz"),
 ]
 
-FEATURE_NAMES = [ # must match order in X arrays, len=12
+FEATURE_NAMES = [ # must match order in X arrays, len=13
+	"game_id",
 	"rows",
 	"cols",
 	"num_pieces",
@@ -44,7 +45,7 @@ DROPOUT = 0.1
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 1e-4
 BATCH_SIZE = 32 # 32 has been tested to be better than 16 and 64
-EPOCHS = 150
+EPOCHS = 120
 TEST_SPLIT = 0.2
 
 
@@ -97,14 +98,16 @@ def load_selected_datasets(flags, dataset_dir, test_split=0.0):
 	y_groups = []
 	used_names = []
 
-	for flag, (name, filename) in zip(flags, DATASET_INFO):
+	for dataset_id, (flag, (name, filename)) in enumerate(zip(flags, DATASET_INFO), start=1):
 		if int(flag) == 0:
 			continue
 		path = dataset_dir / filename
 		if not path.exists():
 			raise FileNotFoundError(f"Missing dataset: {path}")
 		data = np.load(path)
-		x_groups.append(data["X"])
+		x_values = data["X"]
+		game_id = np.full((x_values.shape[0], 1), dataset_id, dtype=x_values.dtype)
+		x_groups.append(np.concatenate([game_id, x_values], axis=1))
 		y_groups.append(data["Y"])
 		used_names.append(name)
 
@@ -158,7 +161,7 @@ def train():
 	output_dim = y_norm_train.shape[1]
 
 	if input_dim != len(FEATURE_NAMES):
-		print(f"Warning: expected {len(FEATURE_NAMES)} features but got {input_dim}, given no modifications to our code, this should be 12")
+		print(f"Warning: expected {len(FEATURE_NAMES)} features but got {input_dim}, given no modifications to our code, this should be 13")
 	if output_dim != len(HEURISTIC_NAMES) * 2:
 		print(f"Warning: expected {len(HEURISTIC_NAMES) * 2} targets but got {output_dim}, given no modifications to our code, this should be 10 (5 heuristic means and 5 heuristic stds)")
 
@@ -240,4 +243,5 @@ def train():
 	print(f"Saved model to {output_path}")
 
 
-train()
+if __name__ == "__main__":
+	train()

@@ -329,13 +329,13 @@ def generate_ataxx(
 ):
     print("Generating Ataxx variants...") # DEBUGGING
     if piece_limits is None:
-        piece_limits = [None, 6, 10]
+        piece_limits = [None, 45, 75]
     if board_sizes is None:
-        board_sizes = [(7, 7), (8, 8), (9, 9)]
+        board_sizes = [(7, 7), (8, 8), (11, 11)]
     if unplayable_proportions is None:
-        unplayable_proportions = [(0.0, 0.0), (0.1, 0.1), (0.2, 0.15)]
+        unplayable_proportions = [(0.0, 0.0), (0.1, 0.1), (0.15, 0.15)]
     if num_turn_values is None:
-        num_turn_values = [3, -3]
+        num_turn_values = [1, 2, -2, 3, -3]
 
     X = []
     Y = []
@@ -378,13 +378,13 @@ def generate_checkers(
     max_steps_per_game=200,
 ):
     if piece_limits is None:
-        piece_limits = [None, 8, 12]
+        piece_limits = [None, 7, 10]
     if board_sizes is None:
-        board_sizes = [(8, 8), (10, 10), (12, 12)]
+        board_sizes = [(8, 8), (10, 10), (13, 13)]
     if unplayable_proportions is None:
-        unplayable_proportions = [(0.0, 0.0), (0.08, 0.08), (0.15, 0.12)]
+        unplayable_proportions = [(0.0, 0.0), (0.1, 0.1), (0.15, 0.15)]
     if num_turn_values is None:
-        num_turn_values = [3, -3]
+        num_turn_values = [1, 2, -2, 3, -3]
 
     X = []
     Y = []
