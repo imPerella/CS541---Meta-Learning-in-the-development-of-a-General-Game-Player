@@ -41,11 +41,11 @@ The system currently implements five games and can generate variants around boar
 
 `python Generate_Datasets.py`
 
-## Model Training
+### Model Training
 
 `python Model.py`
 
-## Model Evaluation and Gameplay
+### Model Evaluation and Gameplay
 
 `python Evaluate_Model.py`
 
