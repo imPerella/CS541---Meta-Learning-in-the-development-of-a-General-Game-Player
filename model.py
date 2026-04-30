@@ -5,8 +5,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-# One-hot flags for datasets to include in training.
-# Order: TicTacToe, ConnectFour, Othello, Ataxx, Checkers
+# One-hot flags for datasets to include in training (TicTacToe, ConnectFour, Othello, Ataxx, Checkers)
 DATASETS = [1, 1, 1, 1, 1]
 
 DATASET_INFO = [

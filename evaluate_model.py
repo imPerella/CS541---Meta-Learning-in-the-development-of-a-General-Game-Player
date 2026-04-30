@@ -20,7 +20,7 @@ MODEL_PATH = model.OUTPUT_DIR / "model_11111.pt"
 
 # len=13, [game_id, rows, cols, num_pieces, max_pieces_per_player, num_unique_pieces, placement_game, captures, space_game, edge_unplayable_ratio, inner_unplayable_ratio, in_a_row_to_win, turns_per_block]
 testing_configurations = [
-    [5, 8, 8, 24, 0, 2, 0, 1, 0, 0.0, 0.0, 0, 1],
+    [5, 8, 8, 24, 0, 2, 0, 1, 0, 0.0, 0.0, 0, 1], # example for checkers
     [1, 6, 8, 48, 0, 1, 1, 0, 0, 0.0, 0.0, 3, 1],
 ]
 

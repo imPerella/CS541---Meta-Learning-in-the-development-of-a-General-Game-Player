@@ -11,50 +11,50 @@ from State import UNPLAYABLE
 NUM_HEURISTICS = 5 # control, mobility, stability, connectivity, tension
 
 
-#generate sample games by playing random legal moves and evaluate the game state
-def eval_sample_positions(game, n_samples=1000, max_steps_per_game=2000):
-    evals = []
-    choice = random.choice
-    control = game.control
-    mobility = game.mobility
-    stability = game.stability
-    connectivity = game.connectivity
-    tension = game.tension
+# Below 2 functions are equivalent to 'calculate_label_online()', however, `calculate_label_online()` is a bit more computationally efficient
+# def eval_sample_positions(game, n_samples=1000, max_steps_per_game=2000):
+#     evals = []
+#     choice = random.choice
+#     control = game.control
+#     mobility = game.mobility
+#     stability = game.stability
+#     connectivity = game.connectivity
+#     tension = game.tension
 
-    for _ in range(n_samples):
-        state = game.initial_state()
-        steps_taken = 0
-        while not game.game_over(state):
-            if max_steps_per_game is not None and steps_taken >= int(max_steps_per_game):
-                break
+#     for _ in range(n_samples):
+#         state = game.initial_state()
+#         steps_taken = 0
+#         while not game.game_over(state):
+#             if max_steps_per_game is not None and steps_taken >= int(max_steps_per_game):
+#                 break
 
-            moves = game.legal_moves(state)
-            if not moves:
-                break
+#             moves = game.legal_moves(state)
+#             if not moves:
+#                 break
 
-            move = choice(moves)
+#             move = choice(moves)
 
-            state = game.make_move(state, move)
-            steps_taken += 1
-            eval = [
-                control(state),
-                mobility(state),
-                stability(state),
-                connectivity(state),
-                tension(state),
-            ]
-            evals.append(eval)
+#             state = game.make_move(state, move)
+#             steps_taken += 1
+#             eval = [
+#                 control(state),
+#                 mobility(state),
+#                 stability(state),
+#                 connectivity(state),
+#                 tension(state),
+#             ]
+#             evals.append(eval)
             
-    return evals
+#     return evals
 
-def calculate_label(evals):
-    evals_array = np.asarray(evals, dtype=np.float64)
-    if evals_array.size == 0:
-        return [(0.0, 0.0)] * NUM_HEURISTICS
+# def calculate_label(evals):
+#     evals_array = np.asarray(evals, dtype=np.float64)
+#     if evals_array.size == 0:
+#         return [(0.0, 0.0)] * NUM_HEURISTICS
 
-    means = evals_array.mean(axis=0)
-    stand_devs = evals_array.std(axis=0)
-    return list(zip(means.tolist(), stand_devs.tolist()))
+#     means = evals_array.mean(axis=0)
+#     stand_devs = evals_array.std(axis=0)
+#     return list(zip(means.tolist(), stand_devs.tolist()))
 
 
 def calculate_label_online(game, n_samples=250, max_steps_per_game=200):
